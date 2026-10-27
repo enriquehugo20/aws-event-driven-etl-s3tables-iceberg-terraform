@@ -1,4 +1,9 @@
-# main.tf
+data "aws_caller_identity" "current" {}
+
+locals {
+  resource_suffix = "csv-parquet-etl-v6-${data.aws_caller_identity.current.account_id}"
+  environment     = "dev"
+}
 
 # ==========================================
 # 1. BUCKETS TRADICIONALES (Raw y State)
