@@ -1,0 +1,37 @@
+name: Deploy AWS Infrastructure
+
+# ¿Cuándo se activa este asistente?
+on:
+  push:
+    branches: [ main ] # Se ejecuta automaticamente cuando haces push a la rama main
+
+jobs:
+  terraform-deploy:
+    runs-on: ubuntu-latest # Usa una maquina virtual ligera con Linux para ejecutar los comandos
+
+    steps:
+      # Paso 1: Descargar tu repositorio en la maquina virtual
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Paso 2: Configurar las credenciales de AWS usando los secretos que guardaste en GitHub
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Paso 3: Instalar Terraform en la maquina virtual
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # Paso 4: Inicializar Terraform (descarga los plugins de AWS)
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      # Paso 5: Aplicar la infraestructura en AWS automaticamente
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
