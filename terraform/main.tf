@@ -31,7 +31,7 @@ resource "aws_s3tables_namespace" "processed_namespace" {
   table_bucket_arn = aws_s3tables_table_bucket.processed.arn
 }
 
-data "aws_caller_identity" "current" {}
+
 
 
 # ==========================================
