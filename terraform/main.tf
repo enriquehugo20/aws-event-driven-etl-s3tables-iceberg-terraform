@@ -1,15 +1,20 @@
+data.aws_caller_identity.current {}
+
+locals {
+  # Sufijo determinista basado en el proyecto y tu Account ID de AWS
+  resource_suffix = "csv-parquet-etl-${data.aws_caller_identity.current.account_id}"
+}
+
 # ==========================================
 # 1. BUCKETS S3 (Raw y State) Y S3 TABLE BUCKET (Processed - Iceberg)
 # ==========================================
 
 resource "aws_s3_bucket" "raw" {
-  bucket        = "${var.project_name}-raw-${data.aws_caller_identity.current.account_id}"
-  force_destroy = true
+  bucket = "raw-${local.resource_suffix}"
 }
 
 resource "aws_s3_bucket" "state" {
-  bucket        = "${var.project_name}-state-${data.aws_caller_identity.current.account_id}"
-  force_destroy = true
+  bucket = "state-${local.resource_suffix}"
 }
 
 # Habilitar EventBridge en el bucket raw para notificar subidas de archivos
@@ -19,8 +24,7 @@ resource "aws_s3_bucket_notification" "raw_bucket_notification" {
 }
 
 resource "aws_s3tables_table_bucket" "processed" {
-  name = "csv-parquet-etl-processed-bucket" # (o el nombre que le tengas asignado)
-
+  name = "processed-${local.resource_suffix}"
 }
 
 resource "aws_s3tables_namespace" "processed_namespace" {
@@ -68,8 +72,8 @@ resource "aws_cloudwatch_metric_alarm" "glue_fail_alarm" {
 # ==========================================
 
 resource "aws_iam_role" "glue_role" {
-  name = "${var.project_name}-glue-role"
-
+  name = "glue-role-${local.resource_suffix}"
+  
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -128,7 +132,7 @@ resource "aws_iam_role_policy" "glue_custom_policy" {
 
 # Rol para permitir que EventBridge dispare el Job de Glue
 resource "aws_iam_role" "eventbridge_role" {
-  name = "csv-parquet-etl-eventbridge-role"
+  name = "eventbridge-role-${local.resource_suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
