@@ -9,9 +9,8 @@ terraform {
     }
   }
 
-  # Backend Remoto S3 para persistir el estado fuera de GitHub Actions
   backend "s3" {
-    bucket         = "tf-state-csv-parquet-etl-276846898236" # Único gracias a tu account ID
+    bucket         = "tf-state-csv-parquet-etl-276846898236"
     key            = "etl/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
@@ -20,11 +19,4 @@ terraform {
 
 provider "aws" {
   region = "us-east-1"
-}
-
-data "aws_caller_identity" "current" {}
-
-locals {
-  resource_suffix = "csv-parquet-etl-v9-${data.aws_caller_identity.current.account_id}" # Cambiamos a v4
-  environment     = "dev"
 }
