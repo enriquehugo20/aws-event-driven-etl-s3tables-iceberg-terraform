@@ -47,7 +47,7 @@ module "table_bucket" {
   }
 
   tables = {
-    Sales = {
+    sales = {
       format    = "ICEBERG"
       namespace = "sales"
 
