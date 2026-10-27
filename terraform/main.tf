@@ -46,12 +46,6 @@ module "table_bucket" {
     }
   }
 
-  # 1. Definimos explícitamente el namespace para evitar el error 404
-  namespaces = {
-    sales = {}
-  }
-
-  # 2. Las tablas asociadas al namespace recién creado
   tables = {
     sales = {
       format    = "ICEBERG"
