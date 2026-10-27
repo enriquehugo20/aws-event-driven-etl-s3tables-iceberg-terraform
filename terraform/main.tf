@@ -18,10 +18,12 @@ resource "aws_s3_bucket_notification" "raw_bucket_notification" {
   eventbridge = true
 }
 
-# S3 Table Bucket para formato Apache Iceberg (optimizado para Athena sin crawlers)
 resource "aws_s3tables_table_bucket" "processed" {
-  name          = "${var.project_name}-processed-${data.aws_caller_identity.current.account_id}"
+  name = "csv-parquet-etl-processed-bucket" # (o el nombre que le tengas asignado)
 
+  encryption_configuration {
+    sse_algorithm = "AES256"
+  }
 }
 
 resource "aws_s3tables_namespace" "processed_namespace" {
@@ -129,7 +131,7 @@ resource "aws_iam_role_policy" "glue_custom_policy" {
 
 # Rol para permitir que EventBridge dispare el Job de Glue
 resource "aws_iam_role" "eventbridge_role" {
-  name = "${var.project_name}-eventbridge-role"
+  name = "csv-parquet-etl-eventbridge-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -146,7 +148,7 @@ resource "aws_iam_role" "eventbridge_role" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_glue_policy" {
-  name = "${var.project_name}-eventbridge-glue-policy"
+  name = "eventbridge-glue-start-job-policy"
   role = aws_iam_role.eventbridge_role.id
 
   policy = jsonencode({
@@ -157,9 +159,7 @@ resource "aws_iam_role_policy" "eventbridge_glue_policy" {
         Action = [
           "glue:StartJobRun"
         ]
-        Resource = [
-          aws_glue_job.etl_job.arn
-        ]
+        Resource = "*"  # O el ARN específico de tu Glue Job
       }
     ]
   })
@@ -190,6 +190,12 @@ resource "aws_cloudwatch_event_target" "glue_target" {
   target_id = "TriggerGlueJobFromS3"
   arn       = aws_glue_job.etl_job.arn
   role_arn  = aws_iam_role.eventbridge_role.arn
+
+  # Forzar que el Job y el Rol IAM estén listos antes de crear el Target
+  depends_on = [
+    aws_glue_job.etl_job,
+    aws_iam_role_policy.eventbridge_glue_policy
+  ]
 }
 
 
