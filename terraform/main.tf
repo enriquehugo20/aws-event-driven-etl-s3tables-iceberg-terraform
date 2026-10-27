@@ -21,9 +21,6 @@ resource "aws_s3_bucket_notification" "raw_bucket_notification" {
 resource "aws_s3tables_table_bucket" "processed" {
   name = "csv-parquet-etl-processed-bucket" # (o el nombre que le tengas asignado)
 
-  encryption_configuration {
-    sse_algorithm = "AES256"
-  }
 }
 
 resource "aws_s3tables_namespace" "processed_namespace" {
