@@ -26,33 +26,6 @@ resource "aws_s3_bucket" "state" {
 # ==========================================
 # 2. S3 TABLE BUCKET (Con Módulo Oficial, Iceberg y Particionado)
 # ==========================================
-# 1. El contenedor principal (S3 Table Bucket)
-resource "aws_s3tables_table_bucket" "this" {
-  name = "processed-${local.resource_suffix}"
-
-  maintenance_configuration = {
-    iceberg_unreferenced_file_removal = {
-      status = "enabled"
-      settings = {
-        non_current_days  = 7
-        unreferenced_days = 3
-      }
-    }
-  }
-
-  tags = {
-    Environment = local.environment
-    Project     = "csv-parquet-etl"
-  }
-}
-
-# 2. El Namespace explícito que alojará tus esquemas
-resource "aws_s3tables_namespace" "sales" {
-  table_bucket_arn = aws_s3tables_table_bucket.this.arn
-  namespace        = "sales"
-}
-
-# 3. La tabla Iceberg atada rígidamente al namespace mediante depends_on
 resource "aws_s3tables_table" "sales" {
   table_bucket_arn = aws_s3tables_table_bucket.this.arn
   namespace        = aws_s3tables_namespace.sales.namespace
@@ -75,21 +48,19 @@ resource "aws_s3tables_table" "sales" {
     }
   }
 
-  metadata = {
-    iceberg = {
-      schema = {
-        field = [
-          {
-            name     = "transaction_date"
-            type     = "date"
-            required = false
-          }
-        ]
+  # Corregido: Sin el signo "=" ya que es un bloque de tipo HCL
+  metadata {
+    iceberg {
+      schema {
+        field {
+          name     = "transaction_date"
+          type     = "date"
+          required = false
+        }
       }
     }
   }
 
-  # Esto garantiza por completo que el namespace exista antes de crear la tabla
   depends_on = [aws_s3tables_namespace.sales]
 }
 # ==========================================
