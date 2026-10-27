@@ -1,24 +1,4 @@
-terraform {
-  required_version = ">= 1.5.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.75.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = "us-east-1" # O la región que estés utilizando
-}
-
-# Obtiene automáticamente tu Account ID de AWS
-data.aws_caller_identity.current {}
-
-locals {
-  resource_suffix = "csv-parquet-etl-${data.aws_caller_identity.current.account_id}"
-  environment     = "dev"
-}
+# main.tf
 
 # ==========================================
 # 1. BUCKETS TRADICIONALES (Raw y State)
@@ -49,7 +29,6 @@ resource "aws_s3_bucket" "state" {
 module "table_bucket" {
   source = "terraform-aws-modules/s3-bucket/aws//modules/table-bucket"
 
-  # Usamos nuestro sufijo determinista para evitar colisiones globales
   table_bucket_name = "processed-${local.resource_suffix}"
 
   encryption_configuration = {
@@ -72,12 +51,11 @@ module "table_bucket" {
       format    = "ICEBERG"
       namespace = "sales"
 
-      # Particionado inteligente para acelerar consultas y reducir costos en Athena
       partition_keys = [
         {
           name      = "transaction_date"
           type      = "date"
-          transform = "identity" # O puedes usar transformaciones como 'day' o 'month' si prefieres agruparlas
+          transform = "identity"
         }
       ]
 
@@ -86,7 +64,7 @@ module "table_bucket" {
           status = "enabled"
 
           settings = {
-            target_file_size_mb = 256 # Sweet spot Athena
+            target_file_size_mb = 256
           }
         }
       }
@@ -123,31 +101,9 @@ resource "aws_iam_role" "glue_role" {
   }
 }
 
-# Adjuntar política estándar de Glue al rol
 resource "aws_iam_role_policy_attachment" "glue_service" {
   role       = aws_iam_role.glue_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
-}
-
-resource "aws_iam_role" "eventbridge_role" {
-  name = "eventbridge-role-${local.resource_suffix}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Environment = local.environment
-  }
 }
 
 # ==========================================
