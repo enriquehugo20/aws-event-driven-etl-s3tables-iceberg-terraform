@@ -21,7 +21,7 @@ resource "aws_s3_bucket_notification" "raw_bucket_notification" {
 # S3 Table Bucket para formato Apache Iceberg (optimizado para Athena sin crawlers)
 resource "aws_s3tables_table_bucket" "processed" {
   name          = "${var.project_name}-processed-${data.aws_caller_identity.current.account_id}"
-  force_destroy = true
+
 }
 
 resource "aws_s3tables_namespace" "processed_namespace" {
