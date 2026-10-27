@@ -71,7 +71,6 @@ module "table_bucket" {
     }
   }
   
-
   tags = {
     Environment = local.environment
     Project     = "csv-parquet-etl"
