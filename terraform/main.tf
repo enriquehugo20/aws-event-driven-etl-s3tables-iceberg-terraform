@@ -1,7 +1,6 @@
-data.aws_caller_identity.current {}
+data "aws_caller_identity" "current" {}
 
 locals {
-  # Sufijo determinista basado en el proyecto y tu Account ID de AWS
   resource_suffix = "csv-parquet-etl-${data.aws_caller_identity.current.account_id}"
 }
 
