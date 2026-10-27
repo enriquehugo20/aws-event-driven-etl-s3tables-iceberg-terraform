@@ -8,13 +8,20 @@ terraform {
       version = ">= 5.75.0"
     }
   }
+
+  # Backend Remoto S3 para persistir el estado fuera de GitHub Actions
+  backend "s3" {
+    bucket         = "tf-state-csv-parquet-etl-276846898236" # Único gracias a tu account ID
+    key            = "etl/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
   region = "us-east-1"
 }
 
-# Declarado aquí de forma global para que cualquier archivo del módulo raíz pueda usarlo
 data "aws_caller_identity" "current" {}
 
 locals {

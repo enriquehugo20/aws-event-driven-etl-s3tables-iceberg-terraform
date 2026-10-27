@@ -70,6 +70,7 @@ module "table_bucket" {
       }
     }
   }
+  
 
   tags = {
     Environment = local.environment
