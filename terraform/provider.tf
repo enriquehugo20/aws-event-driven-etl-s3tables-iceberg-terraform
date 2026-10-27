@@ -25,6 +25,6 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_suffix = "csv-parquet-etl-${data.aws_caller_identity.current.account_id}"
+  resource_suffix = "csv-parquet-etl-v4-${data.aws_caller_identity.current.account_id}" # Cambiamos a v4
   environment     = "dev"
 }
