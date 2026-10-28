@@ -241,21 +241,47 @@ resource "aws_sns_topic_policy" "default" {
 # 8. EVENTBRIDGE PARA DISPARAR GLUE DESDE S3
 # ==========================================
 
-# Permitir que EventBridge invoque al Glue Job
+
+# ==========================================
+# 8. EVENTBRIDGE -> GLUE WORKFLOW -> GLUE JOB
+# ==========================================
+
+resource "aws_glue_workflow" "etl_workflow" {
+  name = "workflow-${local.resource_suffix}"
+
+  tags = {
+    Environment = local.environment
+    Project     = "csv-parquet-etl"
+  }
+}
+
+resource "aws_glue_trigger" "s3_event_trigger" {
+  name          = "trigger-${local.resource_suffix}"
+  type          = "EVENT"
+  workflow_name = aws_glue_workflow.etl_workflow.name
+
+  actions {
+    job_name = aws_glue_job.etl_job.name
+  }
+
+  event_batching_condition {
+    batch_size   = 1
+    batch_window = 60
+  }
+}
+
 resource "aws_iam_role" "eventbridge_glue_role" {
   name = "eventbridge-glue-execution-role-${local.resource_suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
       }
-    ]
+      Action = "sts:AssumeRole"
+    }]
   })
 }
 
@@ -265,40 +291,22 @@ resource "aws_iam_role_policy" "eventbridge_glue_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = "glue:StartJobRun"
-        Resource = aws_glue_job.etl_job.arn
-      }
-    ]
-  })
-}
-
-# Regla de EventBridge que escucha cuando se sube un archivo (PutObject) al bucket raw
-resource "aws_cloudwatch_event_rule" "s3_to_glue_rule" {
-  name        = "s3-upload-trigger-glue-${local.resource_suffix}"
-  description = "Dispara el Glue Job solo ante nuevos archivos CSV en raw"
-
-  event_pattern = jsonencode({
-    source      = ["aws.s3"]
-    detail-type = ["Object Created"]
-    detail = {
-      bucket = {
-        name = [aws_s3_bucket.raw.bucket]
-      }
-      object = {
-        key = [{
-          suffix = ".csv"
-        }]
-      }
-    }
+    Statement = [{
+      Effect = "Allow"
+      Action = "glue:NotifyEvent"
+      Resource = aws_glue_workflow.etl_workflow.arn
+    }]
   })
 }
 
 resource "aws_cloudwatch_event_target" "trigger_glue_target" {
   rule      = aws_cloudwatch_event_rule.s3_to_glue_rule.name
-  target_id = "TriggerGlueJob"
-  arn       = aws_glue_job.etl_job.arn          # El ARN directo que provee el recurso de Glue
-  role_arn  = aws_iam_role.eventbridge_glue_role.arn  # Obligatorio para que EventBridge invoque a Glue
+  target_id = "TriggerGlueWorkflow"
+  arn       = aws_glue_workflow.etl_workflow.arn
+  role_arn  = aws_iam_role.eventbridge_glue_role.arn
+
+  depends_on = [
+    aws_iam_role_policy.eventbridge_glue_policy,
+    aws_glue_trigger.s3_event_trigger
+  ]
 }
