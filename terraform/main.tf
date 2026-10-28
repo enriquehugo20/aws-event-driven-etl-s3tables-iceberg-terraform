@@ -123,30 +123,9 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
-# ==========================================
-# 4. GLUE JOB (Con sufijo determinista)
-# ==========================================
-resource "aws_glue_job" "etl_job" {
-  name     = "glue-job-${local.resource_suffix}"
-  role_arn = aws_iam_role.glue_role.arn
-
-  command {
-    name            = "glueetl"
-    python_version  = "3"
-    script_location = "s3://${aws_s3_bucket.state.bucket}/scripts/etl_script.py"
-  }
-
-  default_arguments = {
-    "--job-language" = "python"
-  }
-
-  tags = {
-    Environment = local.environment
-  }
-}
 
 # ==========================================
-# 5. BUCKET DEDICADO PARA SCRIPTS Y LOGS DE GLUE
+# 4. BUCKET DEDICADO PARA SCRIPTS Y LOGS DE GLUE
 # ==========================================
 resource "aws_s3_bucket" "scripts" {
   bucket = "scripts-logs-${local.resource_suffix}"
@@ -166,7 +145,7 @@ resource "aws_s3_bucket_public_access_block" "scripts" {
 }
 
 # ==========================================
-# 6. SCRIPT DE GLUE (Subido al bucket dedicado)
+# 5. SCRIPT DE GLUE (Subido al bucket dedicado)
 # ==========================================
 resource "aws_s3_object" "etl_script" {
   bucket = aws_s3_bucket.scripts.id
@@ -192,7 +171,7 @@ EOF
 }
 
 # ==========================================
-# 7. GLUE JOB (Con logs al bucket dedicado y script atado)
+# 6. GLUE JOB (Con logs al bucket dedicado y script atado)
 # ==========================================
 resource "aws_glue_job" "etl_job" {
   name     = "glue-job-${local.resource_suffix}"
