@@ -181,7 +181,6 @@ resource "aws_glue_job" "etl_job" {
     "--enable-metrics"                   = "true"
     "--spark-event-logs-path"            = "s3://${aws_s3_bucket.scripts.bucket}/spark-logs/"
   }
-
   depends_on = [aws_s3_object.etl_script]
 }
 
