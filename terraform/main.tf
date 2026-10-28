@@ -299,10 +299,6 @@ resource "aws_cloudwatch_event_rule" "s3_to_glue_rule" {
 resource "aws_cloudwatch_event_target" "trigger_glue_target" {
   rule      = aws_cloudwatch_event_rule.s3_to_glue_rule.name
   target_id = "TriggerGlueJob"
-  arn       = aws_glue_job.etl_job.arn
-  role_arn  = aws_iam_role.eventbridge_glue_role.arn
-
-  glue_target {
-    security_configuration = lookup(aws_glue_job.etl_job, "security_configuration", null)
-  }
+  arn       = aws_glue_job.etl_job.arn          # El ARN directo que provee el recurso de Glue
+  role_arn  = aws_iam_role.eventbridge_glue_role.arn  # Obligatorio para que EventBridge invoque a Glue
 }
