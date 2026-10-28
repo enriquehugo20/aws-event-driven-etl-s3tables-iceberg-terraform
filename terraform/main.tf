@@ -162,7 +162,7 @@ resource "aws_s3_object" "etl_script" {
 # ==========================================
 resource "aws_glue_job" "etl_job" {
   name              = "glue-job-csv-parquet-etl-v6-276846898236"
-  role_arn          = aws_iam_role.glue_service_role.arn
+  role_arn          = aws_iam_role.glue_role.arn  # <-- Corregido aquí
   glue_version      = "4.0"
   worker_type       = "G.1X"
   number_of_workers = 2
@@ -180,6 +180,7 @@ resource "aws_glue_job" "etl_job" {
     "--enable-metrics"                   = "true"
     "--spark-event-logs-path"            = "s3://${aws_s3_bucket.scripts.bucket}/spark-logs/"
   }
+
   depends_on = [aws_s3_object.etl_script]
 }
 
