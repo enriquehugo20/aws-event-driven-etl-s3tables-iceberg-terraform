@@ -155,7 +155,7 @@ resource "aws_s3_bucket_public_access_block" "scripts" {
 resource "aws_s3_object" "etl_script" {
   bucket = aws_s3_bucket.scripts.id
   key    = "scripts/transform_job.py"
-  source = "src/glue/transform_job.py"
+  source = "transform_job.py"  # <-- Apunta directo a la raíz
 }
 # ==========================================
 # 6. GLUE JOB (Con logs al bucket dedicado y script atado)
@@ -172,7 +172,7 @@ resource "aws_glue_job" "etl_job" {
     name            = "glueetl"
     script_location = "s3://${aws_s3_bucket.scripts.bucket}/scripts/transform_job.py"
     python_version  = "3.9"
-    
+
   }
 
   default_arguments = {
