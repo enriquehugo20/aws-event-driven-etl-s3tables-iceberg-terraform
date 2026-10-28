@@ -301,4 +301,8 @@ resource "aws_cloudwatch_event_target" "trigger_glue_target" {
   target_id = "TriggerGlueJob"
   arn       = aws_glue_job.etl_job.arn
   role_arn  = aws_iam_role.eventbridge_glue_role.arn
+
+  glue_target {
+    security_configuration = lookup(aws_glue_job.etl_job, "security_configuration", null)
+  }
 }
