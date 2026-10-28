@@ -18,6 +18,11 @@ resource "aws_s3_bucket" "raw" {
   }
 }
 
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket      = aws_s3_bucket.raw.id
+  eventbridge = true
+}
+
 resource "aws_s3_bucket" "state" {
   bucket        = "state-${local.resource_suffix}"
   force_destroy = true
@@ -246,4 +251,66 @@ resource "aws_sns_topic_policy" "default" {
       }
     ]
   })
+}
+
+# ==========================================
+# 8. EVENTBRIDGE PARA DISPARAR GLUE DESDE S3
+# ==========================================
+
+# Permitir que EventBridge invoque al Glue Job
+resource "aws_iam_role" "eventbridge_glue_role" {
+  name = "eventbridge-glue-execution-role-${local.resource_suffix}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_glue_policy" {
+  name = "eventbridge-glue-policy-${local.resource_suffix}"
+  role = aws_iam_role.eventbridge_glue_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "glue:StartJobRun"
+        Resource = aws_glue_job.etl_job.arn
+      }
+    ]
+  })
+}
+
+# Regla de EventBridge que escucha cuando se sube un archivo (PutObject) al bucket raw
+resource "aws_cloudwatch_event_rule" "s3_to_glue_rule" {
+  name        = "s3-upload-trigger-glue-${local.resource_suffix}"
+  description = "Dispara el Glue Job cuando se sube un archivo al bucket raw"
+
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["Object Created"]
+    detail = {
+      bucket = {
+        name = [aws_s3_bucket.raw.bucket]
+      }
+    }
+  })
+}
+
+# Target que conecta la regla de EventBridge con el Glue Job usando el rol IAM
+resource "aws_cloudwatch_event_target" "trigger_glue_target" {
+  rule      = aws_cloudwatch_event_rule.s3_to_glue_rule.name
+  target_id = "TriggerGlueJob"
+  arn       = aws_glue_job.etl_job.arn
+  role_arn  = aws_iam_role.eventbridge_glue_role.arn
 }
