@@ -299,6 +299,31 @@ resource "aws_iam_role_policy" "eventbridge_glue_policy" {
   })
 }
 
+
+# Regla de EventBridge: detectar archivos CSV nuevos en S3
+resource "aws_cloudwatch_event_rule" "s3_to_glue_rule" {
+  name        = "s3-upload-trigger-glue-${local.resource_suffix}"
+  description = "Dispara el Glue Workflow al crear archivos CSV en raw"
+
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["Object Created"]
+
+    detail = {
+      bucket = {
+        name = [aws_s3_bucket.raw.bucket]
+      }
+
+      object = {
+        key = [{
+          suffix = ".csv"
+        }]
+      }
+    }
+  })
+}
+
+
 resource "aws_cloudwatch_event_target" "trigger_glue_target" {
   rule      = aws_cloudwatch_event_rule.s3_to_glue_rule.name
   target_id = "TriggerGlueWorkflow"
