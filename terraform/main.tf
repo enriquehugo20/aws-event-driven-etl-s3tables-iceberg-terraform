@@ -296,8 +296,8 @@ resource "aws_cloudwatch_event_rule" "s3_to_glue_rule" {
 }
 
 resource "aws_cloudwatch_event_target" "trigger_glue_target" {
-  rule      = aws_cloudwatch_event_rule.s3_upload_rule.name
+  rule      = aws_cloudwatch_event_rule.s3_upload_rule.name # (O el nombre real de tu regla)
   target_id = "TriggerGlueJob"
-  arn       = aws_glue_job.etl_job.arn  # <-- Usa directamente el atributo .arn del recurso de Glue
-  role_arn  = aws_iam_role.eventbridge_role.arn # Asegúrate de que tenga el rol de permisos para invocar a Glue
+  arn       = aws_glue_job.etl_job.arn
+  role_arn  = aws_iam_role.eventbridge_glue_role.arn        # <-- Apunta al rol correcto que definiste
 }
