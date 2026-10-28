@@ -144,3 +144,127 @@ resource "aws_glue_job" "etl_job" {
     Environment = local.environment
   }
 }
+
+# ==========================================
+# 5. BUCKET DEDICADO PARA SCRIPTS Y LOGS DE GLUE
+# ==========================================
+resource "aws_s3_bucket" "scripts" {
+  bucket = "scripts-logs-${local.resource_suffix}"
+
+  tags = {
+    Environment = local.environment
+    Project     = "csv-parquet-etl"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "scripts" {
+  bucket                  = aws_s3_bucket.scripts.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# ==========================================
+# 6. SCRIPT DE GLUE (Subido al bucket dedicado)
+# ==========================================
+resource "aws_s3_object" "etl_script" {
+  bucket = aws_s3_bucket.scripts.id
+  key    = "scripts/etl_script.py"
+  content = <<EOF
+import sys
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
+
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init("etl_job", {})
+
+# Lógica ETL para procesar raw y escribir en S3 Tables (Iceberg)
+
+job.commit()
+EOF
+}
+
+# ==========================================
+# 7. GLUE JOB (Con logs al bucket dedicado y script atado)
+# ==========================================
+resource "aws_glue_job" "etl_job" {
+  name     = "glue-job-${local.resource_suffix}"
+  role_arn = aws_iam_role.glue_role.arn
+
+  command {
+    name            = "glueetl"
+    python_version  = "3"
+    script_location = "s3://${aws_s3_bucket.scripts.bucket}/scripts/etl_script.py"
+  }
+
+  default_arguments = {
+    "--job-language"                     = "python"
+    "--enable-metrics"                   = "true"
+    "--enable-continuous-cloudwatch-log" = "true"
+    "--spark-event-logs-path"            = "s3://${aws_s3_bucket.scripts.bucket}/spark-logs/"
+  }
+
+  tags = {
+    Environment = local.environment
+  }
+
+  depends_on = [aws_s3_object.etl_script]
+}
+
+# ==========================================
+# 8. SISTEMA DE ALERTAS (SNS + EventBridge)
+# ==========================================
+resource "aws_sns_topic" "etl_alerts" {
+  name = "etl-failure-alerts-${local.resource_suffix}"
+}
+
+resource "aws_sns_topic_subscription" "email_subscription" {
+  topic_arn = aws_sns_topic.etl_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+resource "aws_cloudwatch_event_rule" "glue_failure_rule" {
+  name        = "glue-job-failure-${local.resource_suffix}"
+  description = "Captura cuando el trabajo de Glue falla o expira"
+
+  event_pattern = jsonencode({
+    source      = ["aws.glue"]
+    detail-type = ["Glue Job State Change"]
+    detail = {
+      state   = ["FAILED", "TIMEOUT"]
+      jobName = [aws_glue_job.etl_job.name]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns_target" {
+  rule      = aws_cloudwatch_event_rule.glue_failure_rule.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.etl_alerts.arn
+}
+
+resource "aws_sns_topic_policy" "default" {
+  arn    = aws_sns_topic.etl_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowEventBridgePublish"
+        Effect    = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "SNS:Publish"
+        Resource = aws_sns_topic.etl_alerts.arn
+      }
+    ]
+  })
+}
