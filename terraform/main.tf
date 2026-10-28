@@ -155,8 +155,9 @@ resource "aws_s3_bucket_public_access_block" "scripts" {
 resource "aws_s3_object" "etl_script" {
   bucket = aws_s3_bucket.scripts.id
   key    = "scripts/transform_job.py"
-  source = "${path.module}/src/glue/transform_job.py"
-  etag   = filemd5("${path.module}/src/glue/transform_job.py")
+  source = "src/glue/transform_job.py"
+  # Usamos md5 directo con file() para evitar problemas de resolución de path en CI/CD
+  etag   = md5(file("src/glue/transform_job.py"))
 }
 # ==========================================
 # 6. GLUE JOB (Con logs al bucket dedicado y script atado)
