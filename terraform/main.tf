@@ -196,28 +196,25 @@ resource "aws_s3_object" "etl_script" {
 # 6. GLUE JOB (Con logs al bucket dedicado y script atado)
 # ==========================================
 resource "aws_glue_job" "etl_job" {
-  name              = "glue-job-csv-parquet-etl-v6-276846898236"
-  role_arn          = aws_iam_role.glue_role.arn  # <-- Corregido aquí
-  glue_version      = "4.0"
-  worker_type       = "G.1X"
+  name     = "glue-job-csv-parquet-etl-v6-${local.resource_suffix}"
+  role_arn = aws_iam_role.glue_service_role.arn
+  glue_version = "4.0"
+  worker_type  = "G.1X"
   number_of_workers = 2
- 
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.scripts.bucket}/scripts/transform_job.py"
+    script_location = "s3://${aws_s3_bucket.scripts.id}/scripts/transform_job.py"
     python_version  = "3.9"
-
   }
 
+  # --- AÑADE ESTOS ARGUMENTOS REQUERIDOS ---
   default_arguments = {
-    "--job-language"                     = "python"
-    "--enable-continuous-cloudwatch-log" = "true"
-    "--enable-metrics"                   = "true"
-    "--spark-event-logs-path"            = "s3://${aws_s3_bucket.scripts.bucket}/spark-logs/"
+    "--RAW_BUCKET"       = aws_s3_bucket.raw.id
+    "--PROCESSED_BUCKET" = aws_s3_bucket.processed.id
+    "--STATE_BUCKET"     = aws_s3_bucket.state.id # O el bucket que uses para el estado/warehouse/iceberg
+    "--job-bookmark-option" = "job-bookmark-enable"
   }
-
-  depends_on = [aws_s3_object.etl_script]
 }
 
 # ==========================================
