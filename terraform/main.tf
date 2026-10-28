@@ -172,6 +172,7 @@ resource "aws_glue_job" "etl_job" {
     name            = "glueetl"
     script_location = "s3://${aws_s3_bucket.scripts.bucket}/scripts/transform_job.py"
     python_version  = "3.9"
+    
   }
 
   default_arguments = {
