@@ -131,6 +131,7 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
 
 
 # Permitir a Glue leer el script ETL y acceder a los logs de Spark
+
 resource "aws_iam_role_policy" "glue_s3_access" {
   name = "glue-s3-access-${local.resource_suffix}"
   role = aws_iam_role.glue_role.id
@@ -140,14 +141,28 @@ resource "aws_iam_role_policy" "glue_s3_access" {
 
     Statement = [
       {
+        Sid    = "ReadRawBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.raw.arn
+      },
+      {
+        Sid    = "ReadRawCsvFiles"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.raw.arn}/*"
+      },
+      {
         Sid    = "ReadGlueScript"
         Effect = "Allow"
         Action = [
           "s3:GetObject"
         ]
-        Resource = [
-          "${aws_s3_bucket.scripts.arn}/scripts/*"
-        ]
+        Resource = "${aws_s3_bucket.scripts.arn}/scripts/*"
       },
       {
         Sid    = "WriteSparkLogs"
@@ -155,13 +170,20 @@ resource "aws_iam_role_policy" "glue_s3_access" {
         Action = [
           "s3:PutObject"
         ]
-        Resource = [
-          "${aws_s3_bucket.scripts.arn}/spark-logs/*"
+        Resource = "${aws_s3_bucket.scripts.arn}/spark-logs/*"
+      },
+      {
+        Sid    = "WriteStateLogs"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
         ]
+        Resource = "${aws_s3_bucket.state.arn}/states/*"
       }
     ]
   })
 }
+
 
 
 # ==========================================
@@ -198,7 +220,7 @@ resource "aws_s3_object" "etl_script" {
 resource "aws_glue_job" "etl_job" {
   name              = "glue-job-csv-parquet-etl-v6-276846898236"
   role_arn          = aws_iam_role.glue_role.arn  # <-- Corregido aquí
-  glue_version      = "4.0"
+  glue_version      = "5.0"
   worker_type       = "G.1X"
   number_of_workers = 2
  
@@ -220,6 +242,13 @@ default_arguments = {
   "--RAW_BUCKET"       = aws_s3_bucket.raw.bucket
   "--PROCESSED_BUCKET" = aws_s3tables_table_bucket.this.name
   "--STATE_BUCKET"     = aws_s3_bucket.state.bucket
+  "--datalake-formats" = "iceberg"
+
+"--RAW_BUCKET"       = aws_s3_bucket.raw.bucket
+"--PROCESSED_BUCKET" = aws_s3tables_table_bucket.this.name
+"--STATE_BUCKET"     = aws_s3_bucket.state.bucket
+
+"--conf" = "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.defaultCatalog=s3tables --conf spark.sql.catalog.s3tables=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.s3tables.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.s3tables.glue.id=${data.aws_caller_identity.current.account_id}:s3tablescatalog/${aws_s3tables_table_bucket.this.name} --conf spark.sql.catalog.s3tables.warehouse=s3://${aws_s3tables_table_bucket.this.name}/warehouse/"
 }
 
 
