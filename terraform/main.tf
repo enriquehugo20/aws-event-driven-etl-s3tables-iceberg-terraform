@@ -166,7 +166,7 @@ resource "aws_glue_job" "etl_job" {
   glue_version      = "4.0"
   worker_type       = "G.1X"
   number_of_workers = 2
-  python_version    = "3.11"
+ 
 
   command {
     name            = "glueetl"
