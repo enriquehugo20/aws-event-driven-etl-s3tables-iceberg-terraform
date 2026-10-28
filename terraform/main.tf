@@ -130,6 +130,40 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
 }
 
 
+# Permitir a Glue leer el script ETL y acceder a los logs de Spark
+resource "aws_iam_role_policy" "glue_s3_access" {
+  name = "glue-s3-access-${local.resource_suffix}"
+  role = aws_iam_role.glue_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Sid    = "ReadGlueScript"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.scripts.arn}/scripts/*"
+        ]
+      },
+      {
+        Sid    = "WriteSparkLogs"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.scripts.arn}/spark-logs/*"
+        ]
+      }
+    ]
+  })
+}
+
+
 # ==========================================
 # 4. BUCKET DEDICADO PARA SCRIPTS Y LOGS DE GLUE
 # ==========================================
