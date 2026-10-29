@@ -86,12 +86,55 @@ resource "aws_s3tables_table" "sales" {
     }
   }
 
+  
   metadata {
     iceberg {
       schema {
         field {
+          name     = "transaction_id"
+          type     = "string"
+          required = false
+        }
+
+        field {
+          name     = "customer_id"
+          type     = "string"
+          required = false
+        }
+
+        field {
+          name     = "product_category"
+          type     = "string"
+          required = false
+        }
+
+        field {
+          name     = "amount"
+          type     = "decimal(10,2)"
+          required = false
+        }
+
+        field {
+          name     = "store_location"
+          type     = "string"
+          required = false
+        }
+
+        field {
           name     = "transaction_date"
           type     = "date"
+          required = false
+        }
+
+        field {
+          name     = "processed_datetime"
+          type     = "timestamp"
+          required = false
+        }
+
+        field {
+          name     = "etl_status"
+          type     = "string"
           required = false
         }
       }
