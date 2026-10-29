@@ -184,7 +184,34 @@ resource "aws_iam_role_policy" "glue_s3_access" {
   })
 }
 
+resource "aws_iam_role_policy" "glue_s3tables_access" {
+  name = "glue-s3tables-access"
+  role = aws_iam_role.glue_role.id
 
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3tables:GetTableBucket",
+          "s3tables:ListNamespaces",
+          "s3tables:GetNamespace",
+          "s3tables:ListTables",
+          "s3tables:GetTable",
+          "s3tables:GetTableMetadataLocation",
+          "s3tables:GetTableData",
+          "s3tables:PutTableData",
+          "s3tables:UpdateTableMetadataLocation"
+        ]
+        Resource = [
+          "arn:aws:s3tables:us-east-1:276846898236:bucket/processed-csv-parquet-etl-v6-276846898236",
+          "arn:aws:s3tables:us-east-1:276846898236:bucket/processed-csv-parquet-etl-v6-276846898236/table/*"
+        ]
+      }
+    ]
+  })
+}
 
 # ==========================================
 # 4. BUCKET DEDICADO PARA SCRIPTS Y LOGS DE GLUE
