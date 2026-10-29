@@ -40,6 +40,12 @@ state_bucket = args["STATE_BUCKET"]
 # Catálogo y tabla configurados en los argumentos de Glue.
 target_table = "s3tables.sales.sales"
 
+print("Catálogo actual:")
+spark.sql("SHOW CATALOGS").show(truncate=False)
+
+print("Namespaces visibles en s3tables:")
+spark.sql("SHOW NAMESPACES IN s3tables").show(truncate=False)
+
 s3 = boto3.client("s3")
 
 # Una clave diferente por ejecución para no sobrescribir los logs.
